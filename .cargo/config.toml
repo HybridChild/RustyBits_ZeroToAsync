@@ -1,0 +1,13 @@
+[target.thumbv6m-none-eabi]
+# Use probe-rs for running/flashing
+runner = "probe-rs run --chip STM32F072RB"
+
+[build]
+# Set the default target
+target = "thumbv6m-none-eabi"
+
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+# Use flip-link to detect stack overflows during development
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+]
