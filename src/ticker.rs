@@ -23,8 +23,6 @@ pub static G_COUNTER: Mutex<RefCell<u32>> = Mutex::new(RefCell::new(0));
 
 
 pub struct TickTimer<'a> {
-    running: bool,
-    duration: TickDuration,
     end_time: TickInstant,
     ticker: &'a Ticker,
 }
@@ -32,28 +30,13 @@ pub struct TickTimer<'a> {
 impl<'a> TickTimer<'a> {
     pub fn new(duration: TickDuration, ticker: &'a Ticker) -> Self {
         Self {
-            running: false,
-            duration: duration,
-            end_time: TickInstant::from_ticks(0),
+            end_time: ticker.now() + duration,
             ticker,
         }
     }
 
-    pub fn start(&mut self) {
-        self.running = true;
-        self.reset();
-    }
-
-    pub fn stop(&mut self) {
-        self.running = false;
-    }
-
     pub fn is_ready(&self) -> bool {
-        self.running && self.ticker.now() >= self.end_time
-    }
-
-    fn reset(&mut self) {
-        self.end_time = self.ticker.now() + self.duration;
+        self.ticker.now() >= self.end_time
     }
 }
 
@@ -82,7 +65,6 @@ impl Ticker {
     }
   
     pub fn now(&self) -> TickInstant {
-        // Use our counter as the source of time
         let ticks = free(|cs| *G_COUNTER.borrow(cs).borrow());
         TickInstant::from_ticks(ticks)
     }
