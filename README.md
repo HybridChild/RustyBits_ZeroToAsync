@@ -1,0 +1,1 @@
+Implementing the examples from the video [**From Zero To Async in Embedded Rust**](https://youtu.be/wni5h5vIPhU?si=017mKi6HizGhSyWD) by **TheRustyBits** on the STM32 NUCLEO-F072RB board.
