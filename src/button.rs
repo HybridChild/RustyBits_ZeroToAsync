@@ -1,5 +1,6 @@
 use crate::ticker::TickTimer;
 use crate::channel::Sender;
+use crate::future::OurFuture;
 
 use fugit::MillisDuration;
 use stm32f0xx_hal::{
@@ -32,20 +33,31 @@ impl<'a> ButtonTask<'a> {
             sender,
         }
     }
+}
 
-    pub fn poll(&mut self) {
-        match self.state {
-            ButtonState::WaitForPress => {
-                if self.pin.is_low().unwrap() {
-                    self.sender.send(ButtonEvent::Pressed);
-                    self.state = ButtonState::Debounce(TickTimer::new(self.debounce_duration));
+impl OurFuture for ButtonTask<'_> {
+    type Output = ();
+
+    fn poll(&mut self, task_id: usize) -> Poll<Self::Output> {
+        loop {
+            match self.state {
+                ButtonState::WaitForPress => {
+                    if self.pin.is_low().unwrap() {
+                        self.sender.send(ButtonEvent::Pressed);
+                        self.state = ButtonState::Debounce(TickTimer::new(self.debounce_duration));
+                    }
+                    continue;
+                }
+                ButtonState::Debounce(ref timer) => {
+                    if timer.is_ready() && self.pin.is_high().unwrap() {
+                        self.state = ButtonState::WaitForPress;
+                    }
+                    continue;
                 }
             }
-            ButtonState::Debounce(ref timer) => {
-                if timer.is_ready() && self.pin.is_high().unwrap() {
-                    self.state = ButtonState::WaitForPress;
-                }
-            }
+            break;
         }
+
+        return Poll::Pending;
     }
 }

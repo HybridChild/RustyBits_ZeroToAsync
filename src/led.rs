@@ -6,6 +6,7 @@ use fugit::MillisDuration;
 use crate::ticker::TickTimer;
 use crate::channel::Receiver;
 use crate::button::ButtonEvent;
+use crate::future::OurFuture;
 
 enum LedState {
     Toggle,
@@ -29,33 +30,6 @@ impl<'a> LedTask<'a> {
         }
     }
 
-    pub fn poll(&mut self) {
-        match self.receiver.receive() {
-            None => {},
-            Some(event) => {
-                match event {
-                    ButtonEvent::Pressed => {
-                        self.led.set_low().unwrap();
-                        self.update_blink_period();
-                        self.state = LedState::Toggle;
-                    }
-                }
-            }
-        }
-
-        match self.state {
-            LedState::Toggle => {
-                self.led.toggle().unwrap();
-                self.state = LedState::Wait(TickTimer::new(self.blink_period));
-            }
-            LedState::Wait(ref timer) => {
-                if timer.is_ready() {
-                    self.state = LedState::Toggle;
-                }
-            }
-        }
-    }
-
     fn update_blink_period(&mut self) {
         let current_period = self.blink_period.to_millis();
 
@@ -64,5 +38,44 @@ impl<'a> LedTask<'a> {
         } else {
             self.blink_period = self.blink_period - MillisDuration::<u32>::from_ticks(current_period >> 1);
         }
+    }
+}
+
+impl OurFuture for LedTask<'_> {
+    type Output = ();
+
+    fn poll(&mut self, task_id: usize) -> Poll<Self::Output> {
+        loop {
+            match self.receiver.receive() {
+                None => {},
+                Some(event) => {
+                    match event {
+                        ButtonEvent::Pressed => {
+                            self.led.set_low().unwrap();
+                            self.update_blink_period();
+                            self.state = LedState::Toggle;
+                            continue;
+                        }
+                    }
+                }
+            }
+    
+            match self.state {
+                LedState::Toggle => {
+                    self.led.toggle().unwrap();
+                    self.state = LedState::Wait(TickTimer::new(self.blink_period));
+                    continue;
+                }
+                LedState::Wait(ref timer) => {
+                    if timer.is_ready() {
+                        self.state = LedState::Toggle;
+                    }
+                    continue;
+                }
+            }
+            break;
+        }
+        
+        return Poll::Pending;
     }
 }

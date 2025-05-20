@@ -1,17 +1,18 @@
 #![no_std]
 #![no_main]
 
-mod button;
-use button::{ButtonTask, ButtonEvent};
-
-mod channel;
-use channel::Channel;
-
 mod ticker;
-use ticker::Ticker;
-
+mod channel;
+mod button;
 mod led;
+mod future;
+mod executor;
+
+use button::{ButtonTask, ButtonEvent};
+use channel::Channel;
+use ticker::Ticker;
 use led::LedTask;
+use future::OurFuture;
 
 use cortex_m_rt::entry;
 use panic_halt as _;
@@ -42,9 +43,10 @@ fn main() -> ! {
     user_led.set_low().unwrap();
     let mut led_task = LedTask::new(user_led, channel.get_receiver());
 
-    // Main loop
-    loop {
-        button_task.poll();
-        led_task.poll();
-    }
+    let mut tasks: [&mut dyn OurFuture<Output = ()>; 2] = [
+        &mut button_task,
+        &mut led_task
+    ];
+
+    executor::run_tasks(tasks);
 }
