@@ -1,6 +1,12 @@
 #![no_std]
 #![no_main]
 
+mod button;
+use button::{ButtonTask, ButtonEvent};
+
+mod channel;
+use channel::Channel;
+
 mod ticker;
 use ticker::Ticker;
 
@@ -22,19 +28,23 @@ fn main() -> ! {
     // Configure the clock system
     let mut rcc = dp.RCC.configure().freeze(&mut dp.FLASH);
     
-    // Get access to the GPIO A peripheral
-    let gpioa = dp.GPIOA.split(&mut rcc);
-    // Configure PA1 as push-pull output for LED (assuming there's an LED on PA1)
-    let mut user_led = cortex_m::interrupt::free(|cs| gpioa.pa5.into_push_pull_output(cs));
-    // Turn on LED to indicate program has started
-    user_led.set_high().unwrap();
-
     let ticker = Ticker::new(dp.TIM2, &mut rcc);
+    let channel: Channel<ButtonEvent> = Channel::new();
 
-    let mut led_task = LedTask::new(user_led, &ticker);
-    
+    // setup button    
+    let gpioc = dp.GPIOC.split(&mut rcc);
+    let button_pin = cortex_m::interrupt::free(|cs| gpioc.pc13.into_floating_input(cs));
+    let mut button_task = ButtonTask::new(button_pin, &ticker, channel.get_sender());
+
+    // setup led
+    let gpioa = dp.GPIOA.split(&mut rcc);
+    let mut user_led = cortex_m::interrupt::free(|cs| gpioa.pa5.into_push_pull_output(cs));
+    user_led.set_low().unwrap();
+    let mut led_task = LedTask::new(user_led, &ticker, channel.get_receiver());
+
     // Main loop
     loop {
+        button_task.poll();
         led_task.poll();
     }
 }
