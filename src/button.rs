@@ -1,4 +1,4 @@
-use crate::ticker::{Ticker, TickTimer};
+use crate::ticker::TickTimer;
 use crate::channel::Sender;
 
 use fugit::MillisDuration;
@@ -11,24 +11,22 @@ pub enum ButtonEvent {
     Pressed
 }
 
-enum ButtonState<'a> {
+enum ButtonState {
     WaitForPress,
-    Debounce(TickTimer<'a>),
+    Debounce(TickTimer),
 }
 
 pub struct ButtonTask<'a> {
     pin: PC13<Input<Floating>>,
-    ticker: &'a Ticker,
-    state: ButtonState<'a>,
+    state: ButtonState,
     debounce_duration: fugit::Duration<u32, 1, 1000>,
     sender: Sender<'a, ButtonEvent>,
 }
 
 impl<'a> ButtonTask<'a> {
-    pub fn new(pin: PC13<Input<Floating>>, ticker: &'a Ticker, sender: Sender<'a, ButtonEvent>) -> Self {
+    pub fn new(pin: PC13<Input<Floating>>, sender: Sender<'a, ButtonEvent>) -> Self {
         Self {
             pin,
-            ticker,
             state: ButtonState::WaitForPress,
             debounce_duration: MillisDuration::<u32>::from_ticks(100),
             sender,
@@ -40,7 +38,7 @@ impl<'a> ButtonTask<'a> {
             ButtonState::WaitForPress => {
                 if self.pin.is_low().unwrap() {
                     self.sender.send(ButtonEvent::Pressed);
-                    self.state = ButtonState::Debounce(TickTimer::new(self.debounce_duration, &self.ticker));
+                    self.state = ButtonState::Debounce(TickTimer::new(self.debounce_duration));
                 }
             }
             ButtonState::Debounce(ref timer) => {

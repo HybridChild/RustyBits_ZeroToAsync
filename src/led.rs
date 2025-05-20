@@ -3,28 +3,26 @@ use stm32f0xx_hal::{
     prelude::{_embedded_hal_gpio_OutputPin, _embedded_hal_gpio_ToggleableOutputPin},
 };
 use fugit::MillisDuration;
-use crate::ticker::{Ticker, TickTimer};
+use crate::ticker::TickTimer;
 use crate::channel::Receiver;
 use crate::button::ButtonEvent;
 
-enum LedState<'a> {
+enum LedState {
     Toggle,
-    Wait(TickTimer<'a>),
+    Wait(TickTimer),
 }
 
 pub struct LedTask<'a> {
     led: PA5<Output<PushPull>>,
-    ticker: &'a Ticker,
     blink_period: fugit::Duration<u32, 1, 1000>,
-    state: LedState<'a>,
+    state: LedState,
     receiver: Receiver<'a, ButtonEvent>,
 }
 
 impl<'a> LedTask<'a> {
-    pub fn new(led: PA5<Output<PushPull>>, ticker: &'a Ticker, receiver: Receiver<'a, ButtonEvent>) -> Self {
+    pub fn new(led: PA5<Output<PushPull>>, receiver: Receiver<'a, ButtonEvent>) -> Self {
         Self {
             led,
-            ticker,
             blink_period: MillisDuration::<u32>::from_ticks(500),
             state: LedState::Toggle,
             receiver,
@@ -48,7 +46,7 @@ impl<'a> LedTask<'a> {
         match self.state {
             LedState::Toggle => {
                 self.led.toggle().unwrap();
-                self.state = LedState::Wait(TickTimer::new(self.blink_period, &self.ticker));
+                self.state = LedState::Wait(TickTimer::new(self.blink_period));
             }
             LedState::Wait(ref timer) => {
                 if timer.is_ready() {
