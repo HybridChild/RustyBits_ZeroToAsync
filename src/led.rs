@@ -6,7 +6,7 @@ use fugit::MillisDuration;
 use crate::ticker::TickTimer;
 use crate::channel::Receiver;
 use crate::button::ButtonEvent;
-use crate::future::OurFuture;
+use crate::future::{OurFuture, Poll};
 
 enum LedState {
     Toggle,
@@ -54,7 +54,6 @@ impl OurFuture for LedTask<'_> {
                             self.led.set_low().unwrap();
                             self.update_blink_period();
                             self.state = LedState::Toggle;
-                            continue;
                         }
                     }
                 }
@@ -64,18 +63,18 @@ impl OurFuture for LedTask<'_> {
                 LedState::Toggle => {
                     self.led.toggle().unwrap();
                     self.state = LedState::Wait(TickTimer::new(self.blink_period));
-                    continue;
                 }
                 LedState::Wait(ref timer) => {
                     if timer.is_ready() {
                         self.state = LedState::Toggle;
+                        continue;
                     }
-                    continue;
                 }
             }
+            
             break;
         }
         
-        return Poll::Pending;
+        Poll::Pending
     }
 }

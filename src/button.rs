@@ -1,6 +1,6 @@
 use crate::ticker::TickTimer;
 use crate::channel::Sender;
-use crate::future::OurFuture;
+use crate::future::{OurFuture, Poll};
 
 use fugit::MillisDuration;
 use stm32f0xx_hal::{
@@ -46,18 +46,17 @@ impl OurFuture for ButtonTask<'_> {
                         self.sender.send(ButtonEvent::Pressed);
                         self.state = ButtonState::Debounce(TickTimer::new(self.debounce_duration));
                     }
-                    continue;
                 }
                 ButtonState::Debounce(ref timer) => {
                     if timer.is_ready() && self.pin.is_high().unwrap() {
                         self.state = ButtonState::WaitForPress;
                     }
-                    continue;
                 }
             }
+            
             break;
         }
 
-        return Poll::Pending;
+        Poll::Pending
     }
 }

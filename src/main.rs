@@ -48,5 +48,5 @@ fn main() -> ! {
         &mut led_task
     ];
 
-    executor::run_tasks(tasks);
+    executor::run_tasks(&mut tasks);
 }
