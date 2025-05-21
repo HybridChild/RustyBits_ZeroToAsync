@@ -4,7 +4,7 @@ use crate::future::{OurFuture, Poll};
 
 use fugit::MillisDuration;
 use stm32f0xx_hal::{
-    gpio::{gpioc::PC13, Floating, Input},
+    gpio::{Pin, Floating, Input},
     prelude::_embedded_hal_gpio_InputPin
 };
 
@@ -18,14 +18,14 @@ enum ButtonState {
 }
 
 pub struct ButtonTask<'a> {
-    pin: PC13<Input<Floating>>,
+    pin: Pin<Input<Floating>>,
     state: ButtonState,
     debounce_duration: fugit::Duration<u32, 1, 1000>,
     sender: Sender<'a, ButtonEvent>,
 }
 
 impl<'a> ButtonTask<'a> {
-    pub fn new(pin: PC13<Input<Floating>>, sender: Sender<'a, ButtonEvent>) -> Self {
+    pub fn new(pin: Pin<Input<Floating>>, sender: Sender<'a, ButtonEvent>) -> Self {
         Self {
             pin,
             state: ButtonState::WaitForPress,

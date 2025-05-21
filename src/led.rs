@@ -1,5 +1,5 @@
 use stm32f0xx_hal::{
-    gpio::{gpioa::PA5, Output, PushPull},
+    gpio::{Pin, Output, PushPull},
     prelude::{_embedded_hal_gpio_OutputPin, _embedded_hal_gpio_ToggleableOutputPin},
 };
 use fugit::MillisDuration;
@@ -14,14 +14,14 @@ enum LedState {
 }
 
 pub struct LedTask<'a> {
-    led: PA5<Output<PushPull>>,
+    led: Pin<Output<PushPull>>,
     blink_period: fugit::Duration<u32, 1, 1000>,
     state: LedState,
     receiver: Receiver<'a, ButtonEvent>,
 }
 
 impl<'a> LedTask<'a> {
-    pub fn new(led: PA5<Output<PushPull>>, receiver: Receiver<'a, ButtonEvent>) -> Self {
+    pub fn new(led: Pin<Output<PushPull>>, receiver: Receiver<'a, ButtonEvent>) -> Self {
         Self {
             led,
             blink_period: MillisDuration::<u32>::from_ticks(500),
