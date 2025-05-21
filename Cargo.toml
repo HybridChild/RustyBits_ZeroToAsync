@@ -1,5 +1,5 @@
 [package]
-name = "stm32f072_TIM2-blink"
+name = "RustyBits_ZeroToAsync"
 version = "0.1.0"
 edition = "2024"
 
@@ -16,6 +16,6 @@ portable-atomic = { version = "1.11.0", features = ["critical-section"] }
 stm32f0xx-hal = { version = "0.18", features = ["stm32f072"] }
 
 [[bin]]
-name = "stm32f072_TIM2-blink"
+name = "RustyBits_ZeroToAsync"
 test = false
 bench = false

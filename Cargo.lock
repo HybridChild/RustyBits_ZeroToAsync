@@ -3,6 +3,22 @@
 version = 4
 
 [[package]]
+name = "RustyBits_ZeroToAsync"
+version = "0.1.0"
+dependencies = [
+ "cortex-m",
+ "cortex-m-rt",
+ "cortex-m-semihosting",
+ "critical-section",
+ "fugit",
+ "heapless",
+ "nb 1.1.0",
+ "panic-halt",
+ "portable-atomic",
+ "stm32f0xx-hal",
+]
+
+[[package]]
 name = "bare-metal"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -250,22 +266,6 @@ dependencies = [
  "cortex-m",
  "cortex-m-rt",
  "vcell",
-]
-
-[[package]]
-name = "stm32f072_TIM2-blink"
-version = "0.1.0"
-dependencies = [
- "cortex-m",
- "cortex-m-rt",
- "cortex-m-semihosting",
- "critical-section",
- "fugit",
- "heapless",
- "nb 1.1.0",
- "panic-halt",
- "portable-atomic",
- "stm32f0xx-hal",
 ]
 
 [[package]]
