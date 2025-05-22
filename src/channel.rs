@@ -64,12 +64,6 @@ pub struct Receiver<'a, T> {
     state: ReceiverState,
 }
 
-impl<T> Receiver<'_, T> {
-    pub fn receive(&self) -> Option<T> {
-        self.channel.receive()
-    }
-}
-
 impl<T> OurFuture for Receiver<'_, T> {
     type Output = T;
     fn poll(&mut self, task_id: usize) -> Poll<Self::Output> {
