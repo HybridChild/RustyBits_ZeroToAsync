@@ -56,7 +56,7 @@ fn main() -> ! {
     // setup button    
     let gpioc = dp.GPIOC.split(&mut rcc);
     let button_pin = cortex_m::interrupt::free(|cs| {
-        gpioc.pc13.into_floating_input(cs).downgrade()
+        gpioc.pc13.into_pull_up_input(cs).downgrade()
     });
     rprintln!("Button pin configured");
     

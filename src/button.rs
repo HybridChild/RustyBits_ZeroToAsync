@@ -1,8 +1,7 @@
 use embedded_hal::digital::PinState;
 use fugit::MillisDuration;
 use stm32f0xx_hal::{
-    pac::{EXTI, SYSCFG},
-    gpio::{Pin, Floating, Input},
+    gpio::{Pin, Input, PullUp}, pac::{EXTI, SYSCFG}
 };
 
 use crate::{
@@ -30,7 +29,7 @@ pub struct ButtonTask<'a> {
 }
 
 impl<'a> ButtonTask<'a> {
-    pub fn new(pin: Pin<Input<Floating>>, syscfg: &mut SYSCFG, exti: &mut EXTI, sender: Sender<'a, ButtonEvent>) -> Self {
+    pub fn new(pin: Pin<Input<PullUp>>, syscfg: &mut SYSCFG, exti: &mut EXTI, sender: Sender<'a, ButtonEvent>) -> Self {
         Self {
             input: InputChannel::new(pin, syscfg, exti),
             state: ButtonState::WaitForPress,

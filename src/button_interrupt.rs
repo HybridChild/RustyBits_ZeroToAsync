@@ -3,7 +3,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 use stm32f0xx_hal::{
     prelude::_embedded_hal_gpio_InputPin,
     pac::{interrupt, Interrupt, EXTI, SYSCFG},
-    gpio::{Pin, Floating, Input},
+    gpio::{Pin, Input, PullUp},
 };
 use rtt_target::rprintln;
 
@@ -20,13 +20,13 @@ const DEFAULT_TASK: AtomicUsize = AtomicUsize::new(INVALID_TASK_ID);
 static WAKE_TASKS: [AtomicUsize; MAX_CHANNELS_USED] = [DEFAULT_TASK; MAX_CHANNELS_USED];
 
 pub struct InputChannel {
-    pin: Pin<Input<Floating>>,
+    pin: Pin<Input<PullUp>>,
     channel_id: usize,
     ready_state: PinState,
 }
 
 impl InputChannel {
-    pub fn new(pin: Pin<Input<Floating>>, syscfg: &mut SYSCFG, exti: &mut EXTI) -> Self {
+    pub fn new(pin: Pin<Input<PullUp>>, syscfg: &mut SYSCFG, exti: &mut EXTI) -> Self {
         rprintln!("Initializing EXTI...");
         init(syscfg, exti);
 
