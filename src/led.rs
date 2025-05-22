@@ -1,12 +1,18 @@
+use fugit::MillisDuration;
 use stm32f0xx_hal::{
     gpio::{Pin, Output, PushPull},
-    prelude::{_embedded_hal_gpio_OutputPin, _embedded_hal_gpio_ToggleableOutputPin},
+    prelude::{
+        _embedded_hal_gpio_OutputPin,
+        _embedded_hal_gpio_ToggleableOutputPin
+    },
 };
-use fugit::MillisDuration;
-use crate::ticker::TickTimer;
-use crate::channel::Receiver;
-use crate::button::ButtonEvent;
-use crate::future::{OurFuture, Poll};
+
+use crate::{
+    ticker::TickTimer,
+    channel::Receiver,
+    button::ButtonEvent,
+    future::{OurFuture, Poll},
+};
 
 enum LedState {
     Toggle,

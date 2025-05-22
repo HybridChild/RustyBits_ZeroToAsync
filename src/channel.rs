@@ -1,6 +1,8 @@
 use core::cell::Cell;
-use crate::future::{OurFuture, Poll};
-use crate::executor::wake_task;
+use crate::{
+    future::{OurFuture, Poll},
+    executor::wake_task,
+};
 
 pub struct Channel<T> {
     item: Cell<Option<T>>,
@@ -52,7 +54,6 @@ impl<T> Sender<'_, T> {
         self.channel.send(item);
     }
 }
-
 
 enum ReceiverState {
     Init,

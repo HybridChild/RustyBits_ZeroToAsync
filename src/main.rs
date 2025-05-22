@@ -15,12 +15,9 @@ use ticker::Ticker;
 use led::LedTask;
 use future::OurFuture;
 
+use stm32f0xx_hal::{pac, prelude::*};
 use cortex_m_rt::entry;
 use panic_halt as _;
-use stm32f0xx_hal::{
-    pac,
-    prelude::*,
-};
 
 #[entry]
 fn main() -> ! {
@@ -30,20 +27,22 @@ fn main() -> ! {
     // Configure the clock system
     let mut rcc = dp.RCC.configure().freeze(&mut dp.FLASH);
     
+    // Setup tick timer
     Ticker::init(dp.TIM2, &mut rcc);
     let channel: Channel<ButtonEvent> = Channel::new();
 
     // setup button    
     let gpioc = dp.GPIOC.split(&mut rcc);
-    let button_pin = cortex_m::interrupt::free(|cs| gpioc.pc13.into_floating_input(cs));
-    let button_pin = button_pin.downgrade();
+    let button_pin = cortex_m::interrupt::free(|cs| {
+        gpioc.pc13.into_floating_input(cs).downgrade()
+    });
     let mut button_task = ButtonTask::new(button_pin, &mut dp.SYSCFG, &mut dp.EXTI, channel.get_sender());
 
     // setup led
     let gpioa = dp.GPIOA.split(&mut rcc);
-    let user_led = cortex_m::interrupt::free(|cs| gpioa.pa5.into_push_pull_output(cs));
-    let mut user_led = user_led.downgrade();
-    user_led.set_low().unwrap();
+    let user_led = cortex_m::interrupt::free(|cs| {
+        gpioa.pa5.into_push_pull_output(cs).downgrade()
+    });
     let mut led_task = LedTask::new(user_led, channel.get_receiver());
 
     let mut tasks: [&mut dyn OurFuture<Output = ()>; 2] = [

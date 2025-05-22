@@ -1,13 +1,15 @@
-use crate::ticker::TickTimer;
-use crate::channel::Sender;
-use crate::future::{OurFuture, Poll};
-use crate::button_interrupt::InputChannel;
-
 use embedded_hal::digital::PinState;
 use fugit::MillisDuration;
 use stm32f0xx_hal::{
     pac::{EXTI, SYSCFG},
     gpio::{Pin, Floating, Input},
+};
+
+use crate::{
+    ticker::TickTimer,
+    channel::Sender,
+    future::{OurFuture, Poll},
+    button_interrupt::InputChannel,
 };
 
 pub enum ButtonEvent {
@@ -45,7 +47,7 @@ impl OurFuture for ButtonTask<'_> {
         loop {
             match self.state {
                 ButtonState::WaitForPress => {
-                    self.input.set_ready_state(PinState::High);
+                    self.input.set_ready_state(PinState::Low);
 
                     if let Poll::Ready(_) = self.input.poll(task_id) {
                         self.sender.send(ButtonEvent::Pressed);
@@ -60,7 +62,7 @@ impl OurFuture for ButtonTask<'_> {
                     }
                 }
                 ButtonState::WaitForRelease => {
-                    self.input.set_ready_state(PinState::Low);
+                    self.input.set_ready_state(PinState::High);
 
                     if let Poll::Ready(_) = self.input.poll(task_id) {
                         self.state = ButtonState::WaitForPress;

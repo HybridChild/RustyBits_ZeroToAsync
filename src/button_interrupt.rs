@@ -6,8 +6,10 @@ use stm32f0xx_hal::{
     gpio::{Pin, Floating, Input},
 };
 
-use crate::executor::wake_task;
-use crate::future::{OurFuture, Poll};
+use crate::{
+    executor::wake_task,
+    future::{OurFuture, Poll},
+};
 
 const MAX_CHANNELS_USED: usize = 1;
 static NEXT_CHANNEL: AtomicUsize = AtomicUsize::new(0);
@@ -84,21 +86,20 @@ fn enable_exti_interrupt() {
 fn EXTI4_15() {
     // SAFETY: We're just reading and clearing interrupt flags
     let exti = unsafe { &*EXTI::ptr() };
-    
-    // Check which lines triggered and wake the corresponding tasks
-    for line in 4..=15 {
-        if exti.pr.read().bits() & (1 << line) != 0 {
-            // Clear the pending bit by writing 1 to it
-            exti.pr.write(|w| unsafe { w.bits(1 << line) });
+    let line = 13;
+    let idx = 0;
 
-            // Swap in the INVALID_TASK_ID to prevent the task-ready queue from
-            // getting filled up during debounce.
-            let task_id = WAKE_TASKS[line].load(Ordering::Relaxed);
-            WAKE_TASKS[line].store(INVALID_TASK_ID, Ordering::Relaxed);
+    if exti.pr.read().bits() & (1 << line) != 0 {
+        // Clear the pending bit by writing 1 to it
+        exti.pr.write(|w| unsafe { w.bits(1 << line) });
 
-            if task_id != INVALID_TASK_ID {
-                wake_task(task_id);
-            }
+        // Swap in the INVALID_TASK_ID to prevent the task-ready queue from
+        // getting filled up during debounce.
+        let task_id = WAKE_TASKS[idx].load(Ordering::Relaxed);
+        WAKE_TASKS[idx].store(INVALID_TASK_ID, Ordering::Relaxed);
+
+        if task_id != INVALID_TASK_ID {
+            wake_task(task_id);
         }
     }
 }

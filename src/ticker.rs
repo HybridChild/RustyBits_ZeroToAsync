@@ -1,9 +1,11 @@
+use core::{cell::RefCell, ops::DerefMut};
 use fugit::{TimerDuration, TimerInstant};
-use core::cell::RefCell;
-use core::ops::DerefMut;
-use cortex_m::interrupt::{free, Mutex};
-use cortex_m::peripheral::NVIC;
 use heapless::{binary_heap::Min, BinaryHeap};
+
+use cortex_m::{
+    interrupt::{free, Mutex},
+    peripheral::NVIC,
+};
 
 use stm32f0xx_hal::{
   pac::{interrupt, Interrupt, TIM2},
@@ -14,18 +16,25 @@ use stm32f0xx_hal::{
 };
 
 use crate::{
-    executor::wake_task,
     future::{OurFuture, Poll},
+    executor::wake_task,
 };
 
 // Define our time types with millisecond precision
 pub type TickDuration = TimerDuration<u32, 1000>; // 1ms precision (1000 Hz)
 pub type TickInstant = TimerInstant<u32, 1000>;   // 1ms precision (1000 Hz)
 
+// Static variables
 const MAX_DEADLINES: usize = 8;
 static WAKE_DEADLINES: Mutex<RefCell<BinaryHeap<(u32, usize), Min, MAX_DEADLINES>>> =
     Mutex::new(RefCell::new(BinaryHeap::new()));
 
+static TICKER: Ticker = Ticker {
+    tim2: Mutex::new(RefCell::new(None)),
+    counter: Mutex::new(RefCell::new(0)),
+};
+
+// TickTimer struct
 enum TimerState {
     Init,
     Wait,
@@ -79,11 +88,7 @@ impl OurFuture for TickTimer {
     }
 }
 
-static TICKER: Ticker = Ticker {
-    tim2: Mutex::new(RefCell::new(None)),
-    counter: Mutex::new(RefCell::new(0)),
-};
-
+// Ticker struct
 pub struct Ticker {
     tim2: Mutex<RefCell<Option<Timer<TIM2>>>>,
     counter: Mutex<RefCell<u32>>,
@@ -125,8 +130,8 @@ fn enable_tim2_interrupt() {
 #[interrupt]
 fn TIM2() {
     free(|cs| {
+        // Clear the interrupt flag
         if let Some(tim2) = TICKER.tim2.borrow(cs).borrow_mut().deref_mut() {
-            // Clear the interrupt flag
             let _ = tim2.wait();
         }
         
