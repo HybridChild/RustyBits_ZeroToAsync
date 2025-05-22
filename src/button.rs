@@ -1,11 +1,13 @@
 use crate::ticker::TickTimer;
 use crate::channel::Sender;
 use crate::future::{OurFuture, Poll};
+use crate::button_interrupt::InputChannel;
 
+use embedded_hal::digital::PinState;
 use fugit::MillisDuration;
 use stm32f0xx_hal::{
+    pac::{EXTI, SYSCFG},
     gpio::{Pin, Floating, Input},
-    prelude::_embedded_hal_gpio_InputPin
 };
 
 pub enum ButtonEvent {
@@ -14,20 +16,21 @@ pub enum ButtonEvent {
 
 enum ButtonState {
     WaitForPress,
+    WaitForRelease,
     Debounce(TickTimer),
 }
 
 pub struct ButtonTask<'a> {
-    pin: Pin<Input<Floating>>,
+    input: InputChannel,
     state: ButtonState,
     debounce_duration: fugit::Duration<u32, 1, 1000>,
     sender: Sender<'a, ButtonEvent>,
 }
 
 impl<'a> ButtonTask<'a> {
-    pub fn new(pin: Pin<Input<Floating>>, sender: Sender<'a, ButtonEvent>) -> Self {
+    pub fn new(pin: Pin<Input<Floating>>, syscfg: &mut SYSCFG, exti: &mut EXTI, sender: Sender<'a, ButtonEvent>) -> Self {
         Self {
-            pin,
+            input: InputChannel::new(pin, syscfg, exti),
             state: ButtonState::WaitForPress,
             debounce_duration: MillisDuration::<u32>::from_ticks(100),
             sender,
@@ -42,14 +45,26 @@ impl OurFuture for ButtonTask<'_> {
         loop {
             match self.state {
                 ButtonState::WaitForPress => {
-                    if self.pin.is_low().unwrap() {
+                    self.input.set_ready_state(PinState::High);
+
+                    if let Poll::Ready(_) = self.input.poll(task_id) {
                         self.sender.send(ButtonEvent::Pressed);
                         self.state = ButtonState::Debounce(TickTimer::new(self.debounce_duration));
+                        continue;
                     }
                 }
-                ButtonState::Debounce(ref timer) => {
-                    if timer.is_ready() && self.pin.is_high().unwrap() {
+                ButtonState::Debounce(ref mut timer) => {
+                    if let Poll::Ready(_) = timer.poll(task_id) {
+                        self.state = ButtonState::WaitForRelease;
+                        continue;
+                    }
+                }
+                ButtonState::WaitForRelease => {
+                    self.input.set_ready_state(PinState::Low);
+
+                    if let Poll::Ready(_) = self.input.poll(task_id) {
                         self.state = ButtonState::WaitForPress;
+                        continue;
                     }
                 }
             }

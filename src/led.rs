@@ -46,15 +46,12 @@ impl OurFuture for LedTask<'_> {
 
     fn poll(&mut self, task_id: usize) -> Poll<Self::Output> {
         loop {
-            match self.receiver.receive() {
-                None => {},
-                Some(event) => {
-                    match event {
-                        ButtonEvent::Pressed => {
-                            self.led.set_low().unwrap();
-                            self.update_blink_period();
-                            self.state = LedState::Toggle;
-                        }
+            if let Poll::Ready(event) = self.receiver.poll(task_id) {
+                match event {
+                    ButtonEvent::Pressed => {
+                        self.led.set_low().unwrap();
+                        self.update_blink_period();
+                        self.state = LedState::Toggle;
                     }
                 }
             }
@@ -63,9 +60,10 @@ impl OurFuture for LedTask<'_> {
                 LedState::Toggle => {
                     self.led.toggle().unwrap();
                     self.state = LedState::Wait(TickTimer::new(self.blink_period));
+                    continue;
                 }
-                LedState::Wait(ref timer) => {
-                    if timer.is_ready() {
+                LedState::Wait(ref mut timer) => {
+                    if let Poll::Ready(_) = timer.poll(task_id) {
                         self.state = LedState::Toggle;
                         continue;
                     }

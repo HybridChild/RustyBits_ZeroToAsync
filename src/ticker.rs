@@ -3,6 +3,7 @@ use core::cell::RefCell;
 use core::ops::DerefMut;
 use cortex_m::interrupt::{free, Mutex};
 use cortex_m::peripheral::NVIC;
+use heapless::{binary_heap::Min, BinaryHeap};
 
 use stm32f0xx_hal::{
   pac::{interrupt, Interrupt, TIM2},
@@ -12,23 +13,69 @@ use stm32f0xx_hal::{
   timers::{Event, Timer},
 };
 
+use crate::{
+    executor::wake_task,
+    future::{OurFuture, Poll},
+};
+
 // Define our time types with millisecond precision
 pub type TickDuration = TimerDuration<u32, 1000>; // 1ms precision (1000 Hz)
 pub type TickInstant = TimerInstant<u32, 1000>;   // 1ms precision (1000 Hz)
 
+const MAX_DEADLINES: usize = 8;
+static WAKE_DEADLINES: Mutex<RefCell<BinaryHeap<(u32, usize), Min, MAX_DEADLINES>>> =
+    Mutex::new(RefCell::new(BinaryHeap::new()));
+
+enum TimerState {
+    Init,
+    Wait,
+}
+
 pub struct TickTimer {
     end_time: TickInstant,
+    state: TimerState,
 }
 
 impl TickTimer {
     pub fn new(duration: TickDuration) -> Self {
         Self {
             end_time: Ticker::now() + duration,
+            state: TimerState::Init,
         }
     }
+
+    /// Register this timer's deadline in the wake queue
+    fn register(&self, task_id: usize) {
+        let new_deadline = self.end_time.ticks();
+
+        free(|cs| {
+            let mut deadlines = WAKE_DEADLINES.borrow(cs).borrow_mut();
+            
+            if deadlines.push((new_deadline, task_id)).is_err() {
+                panic!("Deadline dropped for task {}!", task_id);
+            }
+        });
+    }
+}
+
+impl OurFuture for TickTimer {
+    type Output = ();
     
-    pub fn is_ready(&self) -> bool {
-        Ticker::now() >= self.end_time
+    fn poll(&mut self, task_id: usize) -> Poll<Self::Output> {
+        match self.state {
+            TimerState::Init => {
+                self.register(task_id);
+                self.state = TimerState::Wait;
+                Poll::Pending
+            }
+            TimerState::Wait => {
+                if Ticker::now() >= self.end_time {
+                    Poll::Ready(())
+                } else {
+                    Poll::Pending
+                }
+            }
+        }
     }
 }
 
@@ -86,5 +133,18 @@ fn TIM2() {
         // Increment the counter
         let mut counter = TICKER.counter.borrow(cs).borrow_mut();
         *counter = counter.wrapping_add(1);
+        
+        // Check for expired deadlines and wake tasks
+        let current_time = *counter;
+        let mut deadlines = WAKE_DEADLINES.borrow(cs).borrow_mut();
+        
+        while let Some((deadline, task_id)) = deadlines.peek() {
+            if current_time >= *deadline {
+                wake_task(*task_id);
+                deadlines.pop();
+            } else {
+                break;
+            }
+        }
     });
 }

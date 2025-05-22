@@ -4,6 +4,7 @@
 mod ticker;
 mod channel;
 mod button;
+mod button_interrupt;
 mod led;
 mod future;
 mod executor;
@@ -36,11 +37,11 @@ fn main() -> ! {
     let gpioc = dp.GPIOC.split(&mut rcc);
     let button_pin = cortex_m::interrupt::free(|cs| gpioc.pc13.into_floating_input(cs));
     let button_pin = button_pin.downgrade();
-    let mut button_task = ButtonTask::new(button_pin, channel.get_sender());
+    let mut button_task = ButtonTask::new(button_pin, &mut dp.SYSCFG, &mut dp.EXTI, channel.get_sender());
 
     // setup led
     let gpioa = dp.GPIOA.split(&mut rcc);
-    let mut user_led = cortex_m::interrupt::free(|cs| gpioa.pa5.into_push_pull_output(cs));
+    let user_led = cortex_m::interrupt::free(|cs| gpioa.pa5.into_push_pull_output(cs));
     let mut user_led = user_led.downgrade();
     user_led.set_low().unwrap();
     let mut led_task = LedTask::new(user_led, channel.get_receiver());
