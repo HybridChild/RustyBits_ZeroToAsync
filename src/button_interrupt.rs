@@ -1,6 +1,7 @@
-use embedded_hal::digital::{InputPin, PinState};
+use embedded_hal::digital::PinState;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use stm32f0xx_hal::{
+    prelude::_embedded_hal_gpio_InputPin,
     pac::{interrupt, Interrupt, EXTI, SYSCFG},
     gpio::{Pin, Floating, Input},
 };
