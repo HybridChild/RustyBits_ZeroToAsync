@@ -1,0 +1,78 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "cargo build",
+            "type": "cargo",
+            "command": "build",
+            "args": [
+                "--target",
+                "thumbv6m-none-eabi"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+        {
+            "label": "cargo check",
+            "type": "cargo",
+            "command": "check",
+            "args": [
+                "--target",
+                "thumbv6m-none-eabi"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+        {
+            "label": "probe-rs run (Flash + RTT)",
+            "type": "shell",
+            "command": "probe-rs",
+            "args": [
+                "run",
+                "--chip",
+                "STM32F072RB",
+                "${workspaceFolder}/target/thumbv6m-none-eabi/debug/RustyBits_ZeroToAsync"
+            ],
+            "group": "test",
+            "dependsOn": "cargo build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "cargo run (using probe-rs)",
+            "type": "cargo",
+            "command": "run",
+            "args": [
+                "--target",
+                "thumbv6m-none-eabi"
+            ],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            }
+        }
+    ]
+}

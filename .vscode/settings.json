@@ -1,0 +1,11 @@
+{
+    "rust-analyzer.cargo.target": "thumbv6m-none-eabi",
+    "rust-analyzer.check.command": "clippy",
+    "rust-analyzer.check.targets": "thumbv6m-none-eabi",
+    "rust-analyzer.cargo.features": [],
+    "cortex-debug.enableTelemetry": false,
+    "files.associations": {
+        "*.x": "text",
+        "memory.x": "linkerscript"
+    }
+}

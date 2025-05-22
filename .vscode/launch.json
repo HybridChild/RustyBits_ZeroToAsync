@@ -1,0 +1,38 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug STM32F072RB (OpenOCD)",
+            "type": "cortex-debug",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/target/thumbv6m-none-eabi/debug/RustyBits_ZeroToAsync",
+            "servertype": "openocd",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32f0x.cfg"
+            ],
+            "device": "STM32F072RB",
+            "runToEntryPoint": "main",
+            "showDevDebugOutput": "raw",
+            "swoConfig": {
+                "enabled": false
+            },
+            "preLaunchTask": "cargo build"
+        },
+        {
+            "name": "Attach to STM32F072RB",
+            "type": "cortex-debug",
+            "request": "attach",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/target/thumbv6m-none-eabi/debug/RustyBits_ZeroToAsync",
+            "servertype": "openocd",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32f0x.cfg"
+            ],
+            "device": "STM32F072RB",
+            "showDevDebugOutput": "raw"
+        }
+    ]
+}
