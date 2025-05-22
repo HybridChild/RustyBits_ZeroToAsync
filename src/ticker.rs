@@ -122,6 +122,7 @@ fn enable_tim2_interrupt() {
     // defined to handle this interrupt. This operation is safe because 
     // we maintain exclusive control over the TIM2 peripheral.
     unsafe {
+        NVIC::unpend(Interrupt::TIM2);
         NVIC::unmask(Interrupt::TIM2);
     }
 }

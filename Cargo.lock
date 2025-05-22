@@ -8,7 +8,6 @@ version = "0.1.0"
 dependencies = [
  "cortex-m",
  "cortex-m-rt",
- "cortex-m-semihosting",
  "critical-section",
  "embedded-hal 1.0.0",
  "fugit",
@@ -16,6 +15,7 @@ dependencies = [
  "nb 1.1.0",
  "panic-halt",
  "portable-atomic",
+ "rtt-target",
  "stm32f0xx-hal",
 ]
 
@@ -103,15 +103,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "cortex-m-semihosting"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c23234600452033cc77e4b761e740e02d2c4168e11dbf36ab14a0f58973592b0"
-dependencies = [
- "cortex-m",
 ]
 
 [[package]]
@@ -220,6 +211,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rtt-target"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4235cd78091930e907d2a510adb0db1369e82668eafa338f109742fa0c83059d"
+dependencies = [
+ "critical-section",
+ "portable-atomic",
+ "ufmt-write",
+]
+
+[[package]]
 name = "rustc_version"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -302,6 +304,12 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
+
+[[package]]
+name = "ufmt-write"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e87a2ed6b42ec5e28cc3b94c09982969e9227600b2e3dcbc1db927a84c06bd69"
 
 [[package]]
 name = "unicode-ident"

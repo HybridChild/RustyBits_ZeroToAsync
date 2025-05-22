@@ -1,11 +1,14 @@
 use cortex_m::asm;
 use heapless::mpmc::Q4;
+use rtt_target::rprintln;
 
 use crate::future::OurFuture;
 
 static TASK_IS_READY: Q4<usize> = Q4::new();
 
 pub fn wake_task(task_id: usize) {
+    rprintln!("Waking task {}", task_id);
+
     if TASK_IS_READY.enqueue(task_id).is_err() {
         panic!("Task queue full: can't add task {}", task_id);
     }
@@ -19,12 +22,15 @@ pub fn run_tasks(tasks: &mut [&mut dyn OurFuture<Output = ()>]) -> ! {
     loop {
         while let Some(task_id) = TASK_IS_READY.dequeue() {
             if task_id >= tasks.len() {
+                rprintln!("Bad task id {}!", task_id);
                 continue;
             }
             
+            rprintln!("Running task {}", task_id);
             tasks[task_id].poll(task_id);
         }
 
+        rprintln!("No tasks ready, going to sleep...");
         asm::wfi();
     }
 }

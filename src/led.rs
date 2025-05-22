@@ -1,4 +1,5 @@
 use fugit::MillisDuration;
+use rtt_target::rprintln;
 use stm32f0xx_hal::{
     gpio::{Pin, Output, PushPull},
     prelude::{
@@ -55,6 +56,7 @@ impl OurFuture for LedTask<'_> {
             if let Poll::Ready(event) = self.receiver.poll(task_id) {
                 match event {
                     ButtonEvent::Pressed => {
+                        rprintln!("Button press detected..");
                         self.led.set_low().unwrap();
                         self.update_blink_period();
                         self.state = LedState::Toggle;
