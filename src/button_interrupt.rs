@@ -16,8 +16,7 @@ const MAX_CHANNELS_USED: usize = 1;
 static NEXT_CHANNEL: AtomicUsize = AtomicUsize::new(0);
 
 const INVALID_TASK_ID: usize = 0xFFFF_FFFF;
-const DEFAULT_TASK: AtomicUsize = AtomicUsize::new(INVALID_TASK_ID);
-static WAKE_TASKS: [AtomicUsize; MAX_CHANNELS_USED] = [DEFAULT_TASK; MAX_CHANNELS_USED];
+static WAKE_TASKS: [AtomicUsize; MAX_CHANNELS_USED] = [AtomicUsize::new(INVALID_TASK_ID); MAX_CHANNELS_USED];
 
 pub struct InputChannel {
     pin: Pin<Input<PullUp>>,
