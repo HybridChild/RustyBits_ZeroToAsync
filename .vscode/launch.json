@@ -13,6 +13,7 @@
                 "target/stm32f0x.cfg"
             ],
             "device": "STM32F072RB",
+            "svdFile": "${workspaceFolder}/.vscode/STM32F0x2.svd",
             "runToEntryPoint": "main",
             "showDevDebugOutput": "raw",
             "swoConfig": {
@@ -32,6 +33,7 @@
                 "target/stm32f0x.cfg"
             ],
             "device": "STM32F072RB",
+            "svdFile": "${workspaceFolder}/.vscode/STM32F0x2.svd",
             "showDevDebugOutput": "raw"
         }
     ]
