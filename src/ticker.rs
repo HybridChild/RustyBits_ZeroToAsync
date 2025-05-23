@@ -98,10 +98,10 @@ impl Ticker {
     pub fn init(tim2: TIM2, rcc: &mut Rcc) {
         // Configure TIM2 for 1ms interrupts (1000 Hz)
         let mut timer = Timer::tim2(tim2, Hertz(1000), rcc);
-        
+
         // Enable the timer interrupt
         timer.listen(Event::TimeOut);
-        
+
         // Move timer into the global mutex
         free(|cs| {
             TICKER.tim2.borrow(cs).replace(Some(timer));
@@ -109,7 +109,7 @@ impl Ticker {
 
         enable_tim2_interrupt();
     }
-  
+
     pub fn now() -> TickInstant {
         let ticks = free(|cs| *TICKER.counter.borrow(cs).borrow());
         TickInstant::from_ticks(ticks)
@@ -135,15 +135,15 @@ fn TIM2() {
         if let Some(tim2) = TICKER.tim2.borrow(cs).borrow_mut().deref_mut() {
             let _ = tim2.wait();
         }
-        
+
         // Increment the counter
         let mut counter = TICKER.counter.borrow(cs).borrow_mut();
         *counter = counter.wrapping_add(1);
-        
+
         // Check for expired deadlines and wake tasks
         let current_time = *counter;
         let mut deadlines = WAKE_DEADLINES.borrow(cs).borrow_mut();
-        
+
         while let Some((deadline, task_id)) = deadlines.peek() {
             if current_time >= *deadline {
                 wake_task(*task_id);

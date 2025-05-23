@@ -69,7 +69,7 @@ impl OurFuture for ButtonTask<'_> {
                     }
                 }
             }
-            
+
             break;
         }
 

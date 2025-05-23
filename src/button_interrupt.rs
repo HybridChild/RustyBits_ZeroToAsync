@@ -74,29 +74,29 @@ fn init_exti(syscfg: &mut SYSCFG, exti: &mut EXTI) {
     exti.ftsr.modify(|_, w| w.tr13().clear_bit());
     exti.pr.write(|w| w.pif13().set_bit());
     cortex_m::asm::delay(1000);
-    
+
     // Step 2: Map PC13 to EXTI13
     syscfg.exticr4.modify(|_, w| w.exti13().pc13());
     cortex_m::asm::delay(1000);
-    
+
     // Step 3: Clear any pending interrupts after SYSCFG change
     exti.pr.write(|w| w.pif13().set_bit());
     cortex_m::asm::delay(1000);
-    
+
     // Step 4: Enable FALLING and RISING edge detection
     exti.ftsr.modify(|_, w| w.tr13().set_bit());
     exti.rtsr.modify(|_, w| w.tr13().set_bit());
 
     cortex_m::asm::delay(1000);
-    
+
     // Step 5: Clear any pending interrupts after trigger configuration
     exti.pr.write(|w| w.pif13().set_bit());
     cortex_m::asm::delay(1000);
-    
+
     // Step 6: Enable interrupt mask
     exti.imr.modify(|_, w| w.mr13().set_bit());
     cortex_m::asm::delay(100);
-    
+
     // Step 7: Enable NVIC interrupt
     unsafe {
         cortex_m::peripheral::NVIC::unpend(Interrupt::EXTI4_15);
@@ -113,7 +113,7 @@ fn EXTI4_15() {
 
     if exti.pr.read().pif13().bit() {
         rprintln!("Button interrupt detected");
-        
+
         // Clear the pending bit
         exti.pr.write(|w| w.pif13().set_bit());
 

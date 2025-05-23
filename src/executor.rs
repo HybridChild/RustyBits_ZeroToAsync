@@ -25,7 +25,7 @@ pub fn run_tasks(tasks: &mut [&mut dyn OurFuture<Output = ()>]) -> ! {
                 rprintln!("Bad task id {}!", task_id);
                 continue;
             }
-            
+
             rprintln!("Running task {}", task_id);
             tasks[task_id].poll(task_id);
         }

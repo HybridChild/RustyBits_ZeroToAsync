@@ -63,7 +63,7 @@ impl OurFuture for LedTask<'_> {
                     }
                 }
             }
-    
+
             match self.state {
                 LedState::Toggle => {
                     self.led.toggle().unwrap();
