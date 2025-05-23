@@ -13,34 +13,38 @@ use crate::{
 };
 
 const MAX_CHANNELS_USED: usize = 1;
-static NEXT_CHANNEL: AtomicUsize = AtomicUsize::new(0);
-
 const INVALID_TASK_ID: usize = 0xFFFF_FFFF;
+
 static WAKE_TASKS: [AtomicUsize; MAX_CHANNELS_USED] = [AtomicUsize::new(INVALID_TASK_ID); MAX_CHANNELS_USED];
+
+fn map_exti_line_to_wake_task(exti_line: usize) -> usize {
+    match exti_line {
+        13 => { 0 }
+        _ => {INVALID_TASK_ID},
+    }
+}
 
 pub struct InputChannel {
     pin: Pin<Input<PullUp>>,
-    channel_id: usize,
+    exti_line: usize,
     ready_state: PinState,
 }
 
 impl InputChannel {
-    pub fn new(pin: Pin<Input<PullUp>>, syscfg: &mut SYSCFG, exti: &mut EXTI) -> Self {        
-        let channel_id = NEXT_CHANNEL.load(Ordering::Relaxed);
-        NEXT_CHANNEL.store(channel_id + 1, Ordering::Relaxed);
+    pub fn new(pin: Pin<Input<PullUp>>, exti_line: usize, syscfg: &mut SYSCFG, exti: &mut EXTI) -> Self {
 
         let channel = Self {
             pin,
-            channel_id,
+            exti_line,
             ready_state: PinState::Low,
         };
 
         // Allow pin to fully stabilize
         cortex_m::asm::delay(100000);
-        
+
         // Initialize EXTI with proper SYSCFG configuration
         init_exti(syscfg, exti);
-        
+
         channel
     }
 
@@ -56,7 +60,7 @@ impl OurFuture for InputChannel {
         if self.ready_state == PinState::from(self.pin.is_high().unwrap()) {
             Poll::Ready(())
         } else {
-            WAKE_TASKS[self.channel_id].store(task_id, Ordering::Relaxed);
+            WAKE_TASKS[map_exti_line_to_wake_task(self.exti_line)].store(task_id, Ordering::Relaxed);
             Poll::Pending
         }
     }
@@ -106,7 +110,6 @@ fn init_exti(syscfg: &mut SYSCFG, exti: &mut EXTI) {
 #[interrupt]
 fn EXTI4_15() {
     let exti = unsafe { &*EXTI::ptr() };
-    let idx = 0;
 
     if exti.pr.read().pif13().bit() {
         rprintln!("Button interrupt detected");
@@ -115,7 +118,7 @@ fn EXTI4_15() {
         exti.pr.write(|w| w.pif13().set_bit());
 
         // Wake the corresponding task
-        let task_id = WAKE_TASKS[idx].load(Ordering::Relaxed);
+        let task_id = WAKE_TASKS[map_exti_line_to_wake_task(13)].load(Ordering::Relaxed);
 
         if task_id != INVALID_TASK_ID {
             rprintln!("Waking task {}", task_id);

@@ -88,7 +88,8 @@ fn main() -> ! {
     
     // Create button task (SYSCFG clock was enabled before RCC configure)
     rprintln!("Creating button task...");
-    let mut button_task = ButtonTask::new(button_pin, &mut dp.SYSCFG, &mut dp.EXTI, channel.get_sender());
+    let exti_line_user_button = 13;
+    let mut button_task = ButtonTask::new(button_pin, exti_line_user_button, &mut dp.SYSCFG, &mut dp.EXTI, channel.get_sender());
     rprintln!("Button task created");
 
     // Create LED task

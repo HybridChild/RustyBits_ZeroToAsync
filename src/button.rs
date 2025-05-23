@@ -29,9 +29,9 @@ pub struct ButtonTask<'a> {
 }
 
 impl<'a> ButtonTask<'a> {
-    pub fn new(pin: Pin<Input<PullUp>>, syscfg: &mut SYSCFG, exti: &mut EXTI, sender: Sender<'a, ButtonEvent>) -> Self {
+    pub fn new(pin: Pin<Input<PullUp>>, exti_line: usize, syscfg: &mut SYSCFG, exti: &mut EXTI, sender: Sender<'a, ButtonEvent>) -> Self {
         Self {
-            input: InputChannel::new(pin, syscfg, exti),
+            input: InputChannel::new(pin, exti_line, syscfg, exti),
             state: ButtonState::WaitForPress,
             debounce_duration: MillisDuration::<u32>::from_ticks(100),
             sender,
