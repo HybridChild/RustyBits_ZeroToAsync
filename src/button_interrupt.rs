@@ -26,20 +26,23 @@ pub struct InputChannel {
 }
 
 impl InputChannel {
-    pub fn new(pin: Pin<Input<PullUp>>, syscfg: &mut SYSCFG, exti: &mut EXTI) -> Self {
-        rprintln!("Initializing EXTI...");
-        init(syscfg, exti);
-
+    pub fn new(pin: Pin<Input<PullUp>>, syscfg: &mut SYSCFG, exti: &mut EXTI) -> Self {        
         let channel_id = NEXT_CHANNEL.load(Ordering::Relaxed);
         NEXT_CHANNEL.store(channel_id + 1, Ordering::Relaxed);
 
-        rprintln!("EXTI channel {} created", channel_id);
-
-        Self {
+        let channel = Self {
             pin,
             channel_id,
             ready_state: PinState::Low,
-        }
+        };
+
+        // Allow pin to fully stabilize
+        cortex_m::asm::delay(100000);
+        
+        // Initialize EXTI with proper SYSCFG configuration
+        init_exti(syscfg, exti);
+        
+        channel
     }
 
     pub fn set_ready_state(&mut self, ready_state: PinState) {
@@ -60,86 +63,64 @@ impl OurFuture for InputChannel {
     }
 }
 
-fn init(syscfg: &mut SYSCFG, exti: &mut EXTI) {
-    rprintln!("Disabling EXTI interrupt...");
-    // Disable the interrupt first to ensure clean setup
+fn init_exti(syscfg: &mut SYSCFG, exti: &mut EXTI) {
+    // Step 1: Disable everything first
     cortex_m::peripheral::NVIC::mask(Interrupt::EXTI4_15);
-    
-    // Clear any pending interrupts first
-    exti.pr.write(|w| w.pif13().set_bit());
-    
-    // Disable the EXTI line first
     exti.imr.modify(|_, w| w.mr13().clear_bit());
-    
-    rprintln!("Configuring SYSCFG for PC13...");
-    // Configure PC13 as an external interrupt source
-    // PC13 is connected to EXTI line 13
-    syscfg.exticr4.modify(|_, w| w.exti13().pc13());
-    
-    // Clear both rising and falling edge triggers first
     exti.rtsr.modify(|_, w| w.tr13().clear_bit());
     exti.ftsr.modify(|_, w| w.tr13().clear_bit());
-    
-    rprintln!("Setting edge triggers...");
-    // Set trigger on both edges to catch all button state changes
-    exti.ftsr.modify(|_, w| w.tr13().set_bit());  // Falling edge (button press)
-    exti.rtsr.modify(|_, w| w.tr13().set_bit());  // Rising edge (button release)
-    
-    // Clear any pending interrupts again
     exti.pr.write(|w| w.pif13().set_bit());
+    cortex_m::asm::delay(1000);
     
-    // Enable the EXTI line
+    // Step 2: Map PC13 to EXTI13
+    syscfg.exticr4.modify(|_, w| w.exti13().pc13());
+    cortex_m::asm::delay(1000);
+    
+    // Step 3: Clear any pending interrupts after SYSCFG change
+    exti.pr.write(|w| w.pif13().set_bit());
+    cortex_m::asm::delay(1000);
+    
+    // Step 4: Enable FALLING and RISING edge detection
+    exti.ftsr.modify(|_, w| w.tr13().set_bit());
+    exti.rtsr.modify(|_, w| w.tr13().set_bit());
+
+    cortex_m::asm::delay(1000);
+    
+    // Step 5: Clear any pending interrupts after trigger configuration
+    exti.pr.write(|w| w.pif13().set_bit());
+    cortex_m::asm::delay(1000);
+    
+    // Step 6: Enable interrupt mask
     exti.imr.modify(|_, w| w.mr13().set_bit());
-    
-    // Small delay to ensure hardware is ready
     cortex_m::asm::delay(100);
     
-    rprintln!("Enabling NVIC interrupt...");
-    enable_exti_interrupt();
-    rprintln!("EXTI initialization complete");
-}
-
-fn enable_exti_interrupt() {
-    // Enable the EXTI interrupt in NVIC
+    // Step 7: Enable NVIC interrupt
     unsafe {
-        // Clear any pending interrupt in NVIC
         cortex_m::peripheral::NVIC::unpend(Interrupt::EXTI4_15);
-        // Enable the interrupt
         cortex_m::peripheral::NVIC::unmask(Interrupt::EXTI4_15);
     }
+
+    rprintln!("EXTI configured (Trigger interrupt on PC13 falling and rising edge)");
 }
 
-// EXTI4_15 handles lines 4-15
+// EXTI4_15 interrupt handler
 #[interrupt]
 fn EXTI4_15() {
-    rprintln!("EXTI interrupt triggered!");
-    
-    // SAFETY: We're just reading and clearing interrupt flags
     let exti = unsafe { &*EXTI::ptr() };
-    let line = 13;
     let idx = 0;
 
-    let pr_value = exti.pr.read().bits();
-    rprintln!("EXTI PR register: 0x{:08x}", pr_value);
-
-    if pr_value & (1 << line) != 0 {
-        rprintln!("Line 13 interrupt confirmed");
+    if exti.pr.read().pif13().bit() {
+        rprintln!("Button interrupt detected");
         
-        // Clear the pending bit by writing 1 to it
-        exti.pr.write(|w| unsafe { w.bits(1 << line) });
+        // Clear the pending bit
+        exti.pr.write(|w| w.pif13().set_bit());
 
-        // Swap in the INVALID_TASK_ID to prevent the task-ready queue from
-        // getting filled up during debounce.
+        // Wake the corresponding task
         let task_id = WAKE_TASKS[idx].load(Ordering::Relaxed);
-        WAKE_TASKS[idx].store(INVALID_TASK_ID, Ordering::Relaxed);
 
         if task_id != INVALID_TASK_ID {
             rprintln!("Waking task {}", task_id);
             wake_task(task_id);
-        } else {
-            rprintln!("No valid task to wake");
         }
-    } else {
-        rprintln!("EXTI interrupt but not line 13");
     }
 }

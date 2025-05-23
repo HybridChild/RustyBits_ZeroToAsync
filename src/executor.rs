@@ -30,7 +30,6 @@ pub fn run_tasks(tasks: &mut [&mut dyn OurFuture<Output = ()>]) -> ! {
             tasks[task_id].poll(task_id);
         }
 
-        rprintln!("No tasks ready, going to sleep...");
         asm::wfi();
     }
 }
