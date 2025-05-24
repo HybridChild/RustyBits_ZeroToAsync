@@ -5,7 +5,7 @@ use stm32f0xx_hal::{
 };
 
 use crate::{
-    ticker::TickTimer,
+    ticker::{TickTimer, TickDuration},
     channel::Sender,
     future::{OurFuture, Poll},
     button_interrupt::InputChannel,
@@ -24,7 +24,7 @@ enum ButtonState {
 pub struct ButtonTask<'a> {
     input: InputChannel,
     state: ButtonState,
-    debounce_duration: fugit::Duration<u32, 1, 1000>,
+    debounce_duration: TickDuration,
     sender: Sender<'a, ButtonEvent>,
 }
 

@@ -9,7 +9,7 @@ use stm32f0xx_hal::{
 };
 
 use crate::{
-    ticker::TickTimer,
+    ticker::{TickTimer, TickDuration},
     channel::Receiver,
     button::ButtonEvent,
     future::{OurFuture, Poll},
@@ -22,7 +22,7 @@ enum LedState {
 
 pub struct LedTask<'a> {
     led: Pin<Output<PushPull>>,
-    blink_period: fugit::Duration<u32, 1, 1000>,
+    blink_period: TickDuration,
     state: LedState,
     receiver: Receiver<'a, ButtonEvent>,
 }
@@ -43,7 +43,7 @@ impl<'a> LedTask<'a> {
         if current_period < 100 {
             self.blink_period = MillisDuration::<u32>::from_ticks(500);
         } else {
-            self.blink_period = self.blink_period - MillisDuration::<u32>::from_ticks(current_period >> 1);
+            self.blink_period -= MillisDuration::<u32>::from_ticks(current_period >> 1);
         }
     }
 }
