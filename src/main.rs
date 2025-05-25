@@ -76,9 +76,9 @@ fn main() -> ! {
     });
     rprintln!("LED pin configured (PA5: Push-Pull Output");
 
-    // Setup tick timer
+    // Setup on-demand tick timer
     Ticker::init(dp.TIM2, &mut rcc);
-    rprintln!("Ticker initialized");
+    rprintln!("On-demand ticker initialized");
 
     // Add delay after timer setup
     cortex_m::asm::delay(5000);

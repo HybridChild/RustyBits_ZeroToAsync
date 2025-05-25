@@ -15,6 +15,7 @@ pub fn wake_task(task_id: usize) {
 }
 
 pub fn run_tasks(tasks: &mut [&mut dyn OurFuture<Output = ()>]) -> ! {
+    // Initially wake all tasks to let them register their first deadlines
     for task_id in 0..tasks.len() {
         TASK_IS_READY.enqueue(task_id).ok();
     }
@@ -30,6 +31,10 @@ pub fn run_tasks(tasks: &mut [&mut dyn OurFuture<Output = ()>]) -> ! {
             tasks[task_id].poll(task_id);
         }
 
+        // Enter sleep mode - processor will wake on any interrupt
+        // (timer compare, button interrupt, etc.)
+        rprintln!("Entering sleep mode...");
         asm::wfi();
+        rprintln!("Woke from sleep");
     }
 }

@@ -77,10 +77,10 @@ impl OurFuture for LedTask<'_> {
                     }
                 }
             }
-            
+
             break;
         }
-        
+
         Poll::Pending
     }
 }
