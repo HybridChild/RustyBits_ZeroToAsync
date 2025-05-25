@@ -1,4 +1,9 @@
-use core::cell::RefCell;
+use core::{
+    cell::RefCell,
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+};
 use fugit::{TimerDuration, TimerInstant};
 use heapless::{binary_heap::Min, BinaryHeap};
 
@@ -14,10 +19,7 @@ use stm32f0xx_hal::{
     timers::{Timer},
 };
 
-use crate::{
-    future::{OurFuture, Poll},
-    executor::wake_task,
-};
+use crate::executor::{wake_task, ExtWaker};
 
 // Define our time types with millisecond precision
 pub type TickDuration = TimerDuration<u32, 1000>; // 1ms precision (1000 Hz)
@@ -75,13 +77,13 @@ impl TickTimer {
     }
 }
 
-impl OurFuture for TickTimer {
+impl Future for TickTimer {
     type Output = ();
 
-    fn poll(&mut self, task_id: usize) -> Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.state {
             TimerState::Init => {
-                self.register(task_id);
+                self.register(cx.waker().task_id());
                 self.state = TimerState::Wait;
                 Poll::Pending
             }
@@ -94,6 +96,10 @@ impl OurFuture for TickTimer {
             }
         }
     }
+}
+
+pub async fn delay(duration: TickDuration) {
+    TickTimer::new(duration).await;
 }
 
 // Ticker struct

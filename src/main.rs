@@ -6,19 +6,26 @@ mod channel;
 mod button;
 mod button_interrupt;
 mod led;
-mod future;
 mod executor;
 
-use button::{ButtonTask, ButtonEvent};
-use channel::Channel;
+use button::ButtonEvent;
+use button_interrupt::InputChannel;
+use channel::{Channel, Sender, Receiver};
 use ticker::Ticker;
-use led::LedTask;
-use future::OurFuture;
+use led::LedThing;
 
-use stm32f0xx_hal::{pac, prelude::*};
+use core::pin::pin;
+use futures::{select_biased, FutureExt};
+use fugit::MillisDurationU32;
 use cortex_m_rt::entry;
 use panic_halt as _;
 use rtt_target::{rprintln, rtt_init_print};
+use embedded_hal::digital::PinState;
+use stm32f0xx_hal::{
+    gpio::{Pin, Input, Output, PushPull, PullUp},
+    pac::{self, EXTI, SYSCFG},
+    prelude::*,
+};
 
 #[entry]
 fn main() -> ! {
@@ -89,19 +96,54 @@ fn main() -> ! {
     // Create button task (SYSCFG clock was enabled before RCC configure)
     rprintln!("Creating button task...");
     let exti_line_user_button = 13;
-    let mut button_task = ButtonTask::new(button_pin, exti_line_user_button, &mut dp.SYSCFG, &mut dp.EXTI, channel.get_sender());
+    let button_task = pin!(
+        button_task(button_pin, exti_line_user_button, &mut dp.SYSCFG, &mut dp.EXTI, channel.get_sender())
+    );
     rprintln!("Button task created");
 
     // Create LED task
-    let mut led_task = LedTask::new(user_led, channel.get_receiver());
-
+    let led_task = pin!(led_task(user_led, channel.get_receiver()));
     rprintln!("LED task created");
+
     rprintln!("Starting executor...");
+    executor::run_tasks(&mut [led_task, button_task]);
+}
 
-    let mut tasks: [&mut dyn OurFuture<Output = ()>; 2] = [
-        &mut button_task,
-        &mut led_task
-    ];
+async fn led_task(
+    led: Pin<Output<PushPull>>,
+    mut receiver: Receiver<'_, ButtonEvent>
+) {
+    let mut blinker = LedThing::new(led);
 
-    executor::run_tasks(&mut tasks);
+    loop {
+        blinker.toggle();
+
+        select_biased! {
+            button_event = receiver.receive().fuse() => {
+                match button_event {
+                    ButtonEvent::Pressed => {
+                        blinker.update_blink_period();
+                    }
+                }
+            }
+            _ = ticker::delay(blinker.get_period()).fuse() => {}
+        }
+    }
+}
+
+async fn button_task(
+    pin: Pin<Input<PullUp>>,
+    exti_line: usize,
+    syscfg: &mut SYSCFG,
+    exti: &mut EXTI,
+    sender: Sender<'_, ButtonEvent>
+) {
+    let mut input = InputChannel::new(pin, exti_line, syscfg, exti);
+
+    loop {
+        input.wait_for(PinState::Low).await;
+        sender.send(ButtonEvent::Pressed);
+        ticker::delay(MillisDurationU32::from_ticks(100)).await;
+        input.wait_for(PinState::High).await;
+    }
 }

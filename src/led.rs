@@ -1,86 +1,39 @@
-use fugit::MillisDuration;
-use rtt_target::rprintln;
+use fugit::MillisDurationU32;
 use stm32f0xx_hal::{
     gpio::{Pin, Output, PushPull},
-    prelude::{
-        _embedded_hal_gpio_OutputPin,
-        _embedded_hal_gpio_ToggleableOutputPin
-    },
+    prelude::_embedded_hal_gpio_ToggleableOutputPin,
 };
 
-use crate::{
-    ticker::{TickTimer, TickDuration},
-    channel::Receiver,
-    button::ButtonEvent,
-    future::{OurFuture, Poll},
-};
+use crate::ticker::TickDuration;
 
-enum LedState {
-    Toggle,
-    Wait(TickTimer),
-}
-
-pub struct LedTask<'a> {
+pub struct LedThing {
     led: Pin<Output<PushPull>>,
     blink_period: TickDuration,
-    state: LedState,
-    receiver: Receiver<'a, ButtonEvent>,
 }
 
-impl<'a> LedTask<'a> {
-    pub fn new(led: Pin<Output<PushPull>>, receiver: Receiver<'a, ButtonEvent>) -> Self {
+impl LedThing {
+    pub fn new(led: Pin<Output<PushPull>>) -> Self {
         Self {
             led,
-            blink_period: MillisDuration::<u32>::from_ticks(500),
-            state: LedState::Toggle,
-            receiver,
+            blink_period: MillisDurationU32::from_ticks(500),
         }
     }
 
-    fn update_blink_period(&mut self) {
+    pub fn update_blink_period(&mut self) {
         let current_period = self.blink_period.to_millis();
 
         if current_period < 100 {
-            self.blink_period = MillisDuration::<u32>::from_ticks(500);
+            self.blink_period = MillisDurationU32::from_ticks(500);
         } else {
-            self.blink_period -= MillisDuration::<u32>::from_ticks(current_period >> 1);
+            self.blink_period -= MillisDurationU32::from_ticks(current_period >> 1);
         }
     }
-}
 
-impl OurFuture for LedTask<'_> {
-    type Output = ();
+    pub fn get_period(&self) -> TickDuration {
+        self.blink_period
+    }
 
-    fn poll(&mut self, task_id: usize) -> Poll<Self::Output> {
-        loop {
-            if let Poll::Ready(event) = self.receiver.poll(task_id) {
-                match event {
-                    ButtonEvent::Pressed => {
-                        rprintln!("Button press detected..");
-                        self.led.set_low().unwrap();
-                        self.update_blink_period();
-                        self.state = LedState::Toggle;
-                    }
-                }
-            }
-
-            match self.state {
-                LedState::Toggle => {
-                    self.led.toggle().unwrap();
-                    self.state = LedState::Wait(TickTimer::new(self.blink_period));
-                    continue;
-                }
-                LedState::Wait(ref mut timer) => {
-                    if let Poll::Ready(_) = timer.poll(task_id) {
-                        self.state = LedState::Toggle;
-                        continue;
-                    }
-                }
-            }
-
-            break;
-        }
-
-        Poll::Pending
+    pub fn toggle(&mut self) {
+        self.led.toggle().unwrap();
     }
 }

@@ -1,5 +1,11 @@
 use embedded_hal::digital::PinState;
-use core::sync::atomic::{AtomicUsize, Ordering};
+
+use core::{
+    future::poll_fn,
+    sync::atomic::{AtomicUsize, Ordering},
+    task::Poll,
+};
+
 use stm32f0xx_hal::{
     prelude::_embedded_hal_gpio_InputPin,
     pac::{interrupt, Interrupt, EXTI, SYSCFG},
@@ -7,10 +13,7 @@ use stm32f0xx_hal::{
 };
 use rtt_target::rprintln;
 
-use crate::{
-    executor::wake_task,
-    future::{OurFuture, Poll},
-};
+use crate::executor::{wake_task, ExtWaker};
 
 const MAX_CHANNELS_USED: usize = 1;
 const INVALID_TASK_ID: usize = 0xFFFF_FFFF;
@@ -27,7 +30,6 @@ fn map_exti_line_to_wake_task(exti_line: usize) -> usize {
 pub struct InputChannel {
     pin: Pin<Input<PullUp>>,
     exti_line: usize,
-    ready_state: PinState,
 }
 
 impl InputChannel {
@@ -36,7 +38,6 @@ impl InputChannel {
         let channel = Self {
             pin,
             exti_line,
-            ready_state: PinState::Low,
         };
 
         // Allow pin to fully stabilize
@@ -48,21 +49,16 @@ impl InputChannel {
         channel
     }
 
-    pub fn set_ready_state(&mut self, ready_state: PinState) {
-        self.ready_state = ready_state;
-    }
-}
-
-impl OurFuture for InputChannel {
-    type Output = ();
-
-    fn poll(&mut self, task_id: usize) -> Poll<Self::Output> {
-        if self.ready_state == PinState::from(self.pin.is_high().unwrap()) {
-            Poll::Ready(())
-        } else {
-            WAKE_TASKS[map_exti_line_to_wake_task(self.exti_line)].store(task_id, Ordering::Relaxed);
-            Poll::Pending
-        }
+    pub async fn wait_for(&mut self, ready_state: PinState) {
+        poll_fn(|cx| {
+            if ready_state == PinState::from(self.pin.is_high().unwrap()) {
+                Poll::Ready(())
+            } else {
+                let exti_line = map_exti_line_to_wake_task(self.exti_line);
+                WAKE_TASKS[exti_line].store(cx.waker().task_id(), Ordering::Relaxed);
+                Poll::Pending
+            }
+        }).await
     }
 }
 
