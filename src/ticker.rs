@@ -10,6 +10,7 @@ use cortex_m::{
 use stm32f0xx_hal::{
     pac::{interrupt, Interrupt, TIM2},
     rcc::Rcc,
+    time::Hertz,
     timers::{Timer},
 };
 
@@ -33,7 +34,7 @@ static WAKE_DEADLINES: Mutex<RefCell<BinaryHeap<(u32, usize), Min, MAX_DEADLINES
     Mutex::new(RefCell::new(BinaryHeap::new()));
 
 static TICKER: Ticker = Ticker {
-    tim2: Mutex::new(RefCell::new(None)),
+    _tim2: Mutex::new(RefCell::new(None)),
 };
 
 // TickTimer struct
@@ -97,21 +98,15 @@ impl OurFuture for TickTimer {
 
 // Ticker struct
 pub struct Ticker {
-    tim2: Mutex<RefCell<Option<Timer<TIM2>>>>,
+    _tim2: Mutex<RefCell<Option<Timer<TIM2>>>>,
 }
 
 impl Ticker {
-    pub fn init(_tim2: TIM2, rcc: &mut Rcc) {
-        // Manual timer configuration for 1ms resolution
+    pub fn init(tim2: TIM2, rcc: &mut Rcc) {
+        // Create HAL timer object to consume the peripheral
+        let timer = Timer::tim2(tim2, Hertz(1000), rcc);
 
-        // Enable TIM2 clock manually using the RCC peripheral
-        unsafe {
-            let rcc_reg = &*stm32f0xx_hal::pac::RCC::ptr();
-            rcc_reg.apb1enr.modify(|_, w| w.tim2en().set_bit());
-            rcc_reg.apb1rstr.modify(|_, w| w.tim2rst().set_bit());
-            rcc_reg.apb1rstr.modify(|_, w| w.tim2rst().clear_bit());
-        }
-
+        // Do manual timer configuration
         unsafe {
             let tim2_reg = &*TIM2::ptr();
 
@@ -138,7 +133,6 @@ impl Ticker {
             tim2_reg.cnt.reset();
 
             // Force an update event to load the prescaler value
-            // This is crucial - the prescaler is buffered and needs an update event
             tim2_reg.egr.write(|w| w.ug().set_bit());
 
             // Clear the update flag that was just set by the update event
@@ -165,9 +159,9 @@ impl Ticker {
             tim2_reg.cr1.modify(|_, w| w.cen().set_bit());
         }
 
-        // Store a dummy timer (we're managing everything manually)
         free(|cs| {
-            TICKER.tim2.borrow(cs).replace(None);
+            // Store the timer object to maintain ownership
+            TICKER._tim2.borrow(cs).replace(Some(timer));
             // Queue starts empty, so update_compare_for_earliest_deadline will add heartbeat
             update_compare_for_earliest_deadline(cs);
         });
