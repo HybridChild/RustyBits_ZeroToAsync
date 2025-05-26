@@ -1,4 +1,8 @@
-This is a fascinating project that demonstrates the evolution from simple polling to a full async runtime for embedded systems! Let me walk you through the key insights by examining how each stage builds upon the previous one, and then connect these concepts to the broader async ecosystem including `futures` and Embassy.
+# From Zero to Async in Embedded Rust
+
+This project implements the examples from the YouTube video [**From Zero To Async in Embedded Rust**](https://youtu.be/wni5h5vIPhU?si=017mKi6HizGhSyWD) by **TheRustyBits** on the stm32NUCLEO-F072RB Development Board.
+
+The project demonstrates the evolution from simple polling to a full async runtime for embedded systems! Let me walk you through the key insights by examining how each stage builds upon the previous one, and then connect these concepts to the broader async ecosystem including `futures` and Embassy.
 
 ## The Journey from Polling to Async
 
