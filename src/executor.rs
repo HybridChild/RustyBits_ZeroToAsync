@@ -1,11 +1,12 @@
 use cortex_m::asm;
-use heapless::mpmc::Q4;
+use core::sync::atomic::Ordering;
+use heapless::mpmc::Queue;
 use rtt_target::rprintln;
 use core::{
     future::Future,
     pin::Pin,
     task::{Context, RawWaker, RawWakerVTable, Waker},
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::AtomicUsize,
 };
 
 pub trait ExtWaker {
@@ -49,7 +50,7 @@ unsafe fn wake_by_ref(p: *const ()) {
 }
 
 static NUM_TASKS: AtomicUsize = AtomicUsize::new(0);
-static TASK_IS_READY: Q4<usize> = Q4::new();
+static TASK_IS_READY: Queue<usize, 4> = Queue::new();
 
 pub fn wake_task(task_id: usize) {
     rprintln!("Waking task {}", task_id);
